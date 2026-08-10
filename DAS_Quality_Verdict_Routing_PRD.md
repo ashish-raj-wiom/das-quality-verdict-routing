@@ -2,8 +2,8 @@
 
 | | | | |
 |---|---|---|---|
-| **Owner** — Ashish Raj (PM) | **Reviewer** — TBD ⚠️ *AI GENERATED — review* | **Status** — Draft | **Sign-off** — Pending |
-| **Version** — v0.1 · 10 Aug 2026 | **Consulted — Quality OS** — TBD ⚠️ *AI GENERATED — review* | **Consulted — Allocation eng** — TBD ⚠️ *AI GENERATED — review* | **Consulted — Capacity & Coverage** — TBD ⚠️ *AI GENERATED — review* |
+| **Owner** — Ashish Raj (PM) | **Reviewer** — Saurabh Goyal (EM) | **Status** — In review | **Sign-off** — Pending |
+| **Version** — v0.2 · 10 Aug 2026 | **Consulted — Quality OS** — Akhil | **Consulted — Allocation eng** — TBD ⚠️ *AI GENERATED — review* | **Consulted — Capacity & Coverage** — TBD ⚠️ *AI GENERATED — review* |
 
 ---
 
@@ -21,7 +21,9 @@ It leaves unchanged:
 - **How a new exposure record starts.** When a CSP is authorised in a zone he did not hold before, that new record begins at the eligibility path's own starting point, carrying no verdict — his standing is written to it by the next verdict Quality issues, not backdated onto it at creation (AC-REG-4). For up to one cycle, a blocked CSP is therefore routable in newly authorised territory. This is a conscious call, not an oversight.
 - **What the CSP sees.** His quality strip in the app reads the Quality domain directly, not routing. No screen changes (AC-REG-3, §4).
 
-Hard limits: a verdict never creates a routing exposure record (G1), and never reaches a zone it did not name (G2).
+Hard limits: a verdict never creates a routing exposure record (G1), and never reaches a zone outside the scope Quality declared (G2).
+
+**Dependency — the recovering verdict has no home in the existing mapping.** D&A OS §4.2 gives recovery from non-compliant its own band, reduced exposure, held for the P43 window. The allocation domain has no case for it: P43 is configured and never read, and a recovering verdict falls through to the default band — which carries *more* exposure than the at-risk band, not less. So a recovering CSP becomes routable again, correctly (AC-WF-2), but at the wrong intensity. Closing that is the allocation domain's §4.2 work, not this spec's; this spec only makes the verdict reach it. Flagged for the reviewer. ⚠️ *AI GENERATED — review*
 
 ### Guardrails — promises that hold on every path
 
@@ -29,7 +31,7 @@ Hard limits: a verdict never creates a routing exposure record (G1), and never r
 |---|---|---|---|
 | G1 | **No phantom exposure** | A verdict never brings a (CSP, zone) exposure record into existence — it only updates records that already exist. | R2 · AC-GRD-1 · AC-DRP-1 · AC-DRP-2 · MQ-4 |
 | G2 | **No scope widening** | A verdict that names a zone changes that zone and no other. | R2b · AC-GRD-2 · AC-APP-2 · MQ-3 |
-| G3 | **No stale overwrite** | A verdict assessed earlier never replaces one assessed later, however late it arrives. | R3 · AC-GRD-3 · AC-DRP-3 · MQ-1 |
+| G3 | **No stale overwrite** | A verdict never replaces one assessed later than it, or at the same instant as it, however late it arrives. | R3 · AC-GRD-3 · AC-DRP-3 · MQ-1 |
 
 ### Success metrics
 
@@ -37,7 +39,7 @@ Hard limits: a verdict never creates a routing exposure record (G1), and never r
 |---|---|---|---|---|
 | M1 | Share of new allocations assigned to a CSP whose current recorded verdict is non-compliant | Unbounded — routing has never held a live verdict, so no CSP has ever been withheld work on quality grounds | 0% ⚠️ *AI GENERATED — review* | MQ-2 |
 | M2 | Share of verdicts Quality issues that routing either applies or drops with a recorded reason. A verdict applied after C-01 still counts as applied — lateness is a separate finding under MQ-1 (AC-FAIL-1), not an M2 miss | 0% — no verdict has ever reached routing | 100% ⚠️ *AI GENERATED — review* | MQ-1 |
-| M3 | Share of multi-zone CSPs whose every exposure record carries the CSP's current verdict at cycle close | n/a — new capability | 100% ⚠️ *AI GENERATED — review* | MQ-3 |
+| M3 | Share of multi-zone CSPs whose every exposure record carries the CSP's current verdict at cycle close. Records created since that verdict landed are excluded — they legitimately hold none until the next one (AC-REG-4) | n/a — new capability | 100% ⚠️ *AI GENERATED — review* | MQ-3 |
 
 **Invariant (not a metric):** G1 — exposure records created by a verdict = 0, zero tolerance. Monitored via MQ-4, not trended.
 
@@ -48,7 +50,7 @@ Hard limits: a verdict never creates a routing exposure record (G1), and never r
 | ID | Story | MUST | MUST NOT |
 |---|---|---|---|
 | R1 | As routing, I want the CSP's current Quality verdict so that I stop sending new customers to a CSP Quality has judged non-compliant, and start again when he recovers. | **(a)** Accept the verdicts listed in C-02 — compliant, at risk, non-compliant, recovering — as the CSP's judged standing. **(b)** Record the verdict against the CSP's exposure records within C-01 of Quality issuing it. **(c)** Let the recorded verdict feed the exposure band by the existing D&A OS §4.2 rules; this spec sets the input, not the band. | Treat "could not judge him" as a verdict. A signal that Quality had insufficient data leaves the recorded verdict and the band exactly as they were — a CSP cannot be released from a block by going quiet. |
-| R2 | As the Quality domain, when I name no zone I mean the CSP everywhere; when I name a zone I mean that zone only. | **(a)** A verdict with no zone named applies to every exposure record the CSP holds. **(b)** A verdict naming a zone routing holds for that CSP applies to that one record. **(c)** Treat an absent zone, an empty zone, and the placeholder value in C-03 as "no zone named". | **(a)** Create an exposure record for a CSP or a zone (G1). **(b)** Apply a zone-named verdict to any other zone of that CSP, or widen it to all zones because the named zone is unrecognised (G2). |
+| R2 | As the Quality domain, when I name no zone I mean the CSP everywhere; when I name a zone I mean that zone only. | **(a)** A verdict with no zone named applies to every exposure record the CSP holds. **(b)** A verdict naming a zone routing holds for that CSP applies to that one record. **(c)** Treat an absent zone, an empty zone, and the placeholder value in C-03 as "no zone named". | **(a)** Bring an exposure record into existence (G1). **(b)** Apply a zone-named verdict to any other zone of that CSP, or widen it to all zones because the named zone is unrecognised (G2). |
 | R3 | As routing, I want the CSP's latest judged standing, not the last message that happened to arrive. | Keep the verdict Quality assessed most recently, comparing Quality's assessment time — never arrival time. | Let a re-delivered or delayed verdict replace a verdict assessed later or at the same instant (G3). |
 | R4 | As the PM, I want to know a verdict was acted on, because this pipe has been silently dead once already. | Record, for every verdict received, whether it was applied or dropped and the reason for the drop. | Discard a verdict without a recorded reason. |
 
@@ -86,7 +88,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 | T1 | Any recorded verdict, or none | A verdict arrives naming no zone | Assessed later than the recorded verdict (R3); the CSP holds at least one exposure record | The arriving verdict, on **every** exposure record the CSP holds | Band re-derived on each record by the existing §4.2 rules (R1c); no record created (G1); applied within C-01 (R1b); application recorded (R4). |
 | T2 | Any recorded verdict, or none | A verdict arrives naming a zone routing holds for this CSP | Assessed later than the recorded verdict (R3) | The arriving verdict, on **that one** record | As T1, for that record only; no other zone of this CSP is touched (G2, R2b). |
 | T3 | Any | A verdict arrives naming a zone routing does not hold for this CSP, **or** the CSP holds no exposure record at all | — | Unchanged | Verdict dropped; reason recorded (R4). No exposure record is created (G1). No widening to his other zones (G2). |
-| T4 | Any | A verdict arrives assessed earlier than, or at the same instant as, the recorded verdict | — | Unchanged | Dropped as stale; reason recorded (R3, R4, G3). |
+| T4 | Any | A verdict arrives assessed earlier than, or at the same instant as, the recorded verdict, and is not a re-delivery of it (T5 takes that case first, per §3a) | — | Unchanged | Dropped as stale; reason recorded (R3, R4, G3). |
 | T5 | Any | The same verdict is delivered again | Already applied | Unchanged | Ignored. No second application and no drop reason — a re-delivery is not a loss. |
 | T6 | Any | Quality reports it could not judge the CSP this cycle | — | Unchanged | Not a verdict (R1 MUST NOT). Recorded verdict and band both untouched, so a block stays a block. |
 
@@ -116,7 +118,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 |---|---|---|
 | MQ-1 | For each evaluation cycle: how many verdicts Quality issued, how many routing applied, and how many it dropped — broken down by drop reason. | M2 · R4 · G3 |
 | MQ-2 | For each new allocation, what the assigned CSP's recorded verdict was at the moment of assignment. | M1 · R1 |
-| MQ-3 | For each multi-zone CSP at cycle close, whether every one of his exposure records carries his current verdict. | M3 · G2 · R2a |
+| MQ-3 | For each multi-zone CSP at cycle close, whether every one of his exposure records carries his current verdict — counting only records that already existed when that verdict landed. | M3 · G2 · R2a |
 | MQ-4 | Whether any exposure record came into existence as a result of a verdict. | G1 invariant |
 
 ---
@@ -129,7 +131,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
-| AC-APP-1 | **Given** `a0a0m0` holds exposure records in `zone_1101`, `zone_3092` and `india_grid_002192694`, all recorded compliant, **When** Quality issues a non-compliant verdict for `a0a0m0` at 02:00 on 12 Aug naming no zone, **Then** all three records read non-compliant within C-01 (60 s), and `a0a0m0` still holds exactly three records. | R1b · R2a · T1 · G1 | Settled |
+| AC-APP-1 | **Given** `a0a0m0` holds exposure records in `zone_1101`, `zone_3092` and `india_grid_002192694`, all recorded compliant from a verdict assessed 29 Jul 02:00, **When** Quality issues a non-compliant verdict for `a0a0m0` at 02:00 on 12 Aug naming no zone, **Then** all three records read non-compliant within C-01 (60 s), and `a0a0m0` still holds exactly three records. | R1b · R2a · T1 · G1 | Settled |
 | AC-APP-2 | **Given** the same three compliant records, **When** the 02:00 non-compliant verdict names `zone_3092`, **Then** only the `zone_3092` record reads non-compliant; `zone_1101` and `india_grid_002192694` still read compliant. | R2b · T2 · G2 | Settled |
 | AC-APP-3 | **Given** the same three compliant records, **When** the 02:00 non-compliant verdict carries the literal zone value `DEFAULT`, **Then** all three records read non-compliant — the placeholder is read as "no zone named", not as a zone. | R2c · T1 · C-03 | Settled |
 | AC-APP-4 | **Given** `a0b1u5` is recorded non-compliant in `zone_3092`, **When** Quality issues a recovering verdict for him at 02:00 on 12 Aug, **Then** the `zone_3092` record reads recovering and the band on that record is re-derived by the existing §4.2 rules — this spec asserts the input, not the resulting band. | R1a · R1c · T1 | Settled |
@@ -191,7 +193,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 |---|---|---|---|
 | AC-GRD-1 | **Given** `a0a0m0` holds exactly three exposure records, **When** a verdict is sent down each path of §3a in turn — no zone named, zone named and held, zone named and not held, stale, duplicate, and not-a-verdict — **Then** he still holds exactly three records after every one of them, and no record exists for any zone he was not already authorised in. | G1 · MQ-4 | Settled |
 | AC-GRD-2 | **Given** `a0a0m0` holds records in `zone_1101`, `zone_3092` and `india_grid_002192694`, **When** a verdict naming `zone_3092` is applied, **Then** the other two records are unchanged in every respect, and no record belonging to any other CSP changes. | G2 · MQ-3 | Settled |
-| AC-GRD-3 | **Given** `a0a0m0`'s `zone_1101` record, **When** the verdicts of AC-APP-1, AC-DRP-3, AC-BV-1 and AC-BV-2 are delivered in any order, **Then** the assessment time on the recorded verdict never moves backwards. | G3 · MQ-1 | Settled |
+| AC-GRD-3 | **Given** `a0a0m0`'s `zone_1101` record holds a compliant verdict assessed 29 Jul 02:00, **When** three verdicts — non-compliant assessed 11 Aug 02:00, compliant assessed 12 Aug 02:00:00, non-compliant assessed 12 Aug 02:00:01 — are delivered in any of the six possible orders, **Then** the record ends non-compliant every time and the assessment time on it never moves backwards at any step. | G3 · MQ-1 | Settled |
 
 ---
 
@@ -227,7 +229,8 @@ What the platform must be able to do for this feature to exist. Whether these ar
 
 | Location | What was generated | Basis |
 |---|---|---|
-| Header — Reviewer, Consulted (Quality OS, Allocation eng, Capacity & Coverage) | All four names left as TBD | You named nobody. Deliberately not filled from memory — a wrong name has shipped in a deliverable before. Sign-off is blocked until these are real. |
+| Header — Consulted (Allocation eng, Capacity & Coverage) | Both names left as TBD | Reviewer and Quality OS are now confirmed (Saurabh Goyal, Akhil). These two are not. Deliberately not filled from memory — a wrong name has shipped in a deliverable before. Sign-off is blocked until they are real. |
+| §1 Dependency — recovering verdict has no band | The whole paragraph: that P43 is configured but never read, that a recovering verdict falls to the default band, and that the default band carries more exposure than at-risk | Not asked; found on review by tracing the allocation domain's band derivation against D&A OS §4.2 and §4.3 Tier 4. Confirm you want it stated as a flagged dependency rather than pulled into this spec's scope. |
 | §1 M1 target — 0% | Target value | Inferred from the objective. You said the point is that a non-compliant CSP stops getting new work; 0% is the literal reading. Confirm you want zero rather than a tolerance. |
 | §1 M2 target — 100% | Target value | Inferred from R4 ("no silent loss"). Every verdict is either applied or has a reason, so 100% is definitional rather than ambitious. |
 | §1 M3 target — 100% | Target value | Inferred from R2a. If fan-out works, every record carries the verdict; anything under 100% is a defect, not a shortfall. |
