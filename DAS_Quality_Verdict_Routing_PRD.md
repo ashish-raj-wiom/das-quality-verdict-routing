@@ -3,13 +3,13 @@
 | | | | |
 |---|---|---|---|
 | **Owner** — Ashish Raj (PM) | **Reviewer** — Saurabh Goyal (EM) | **Status** — Signed off | **Sign-off** — Signed off · 11 Aug 2026 |
-| **Version** — v1.0 · 11 Aug 2026 | **Consulted — Quality OS** — Akhil | | |
+| **Version** — v1.1 · 11 Aug 2026 | **Consulted — Quality OS** — Akhil | | |
 
 ---
 
 ## 1. Objective & Definition of Success
 
-**Objective.** A customer is not handed to a CSP that Quality has judged non-compliant, and a CSP who climbs back out is given work again — because routing acts on Quality's verdict from the moment it is issued.
+**Objective.** Every customer is served by the best-standing CSP their zone can offer, because each CSP's position in routing reflects what Quality currently thinks of him — whichever way his standing has moved — in every zone he works.
 
 **Boundary.** This spec governs one thing: how the routing domain receives a CSP's Quality verdict and where it records it. It ends at the recorded verdict. Everything the recorded verdict then feeds is existing behaviour and must stay that way (G4).
 
@@ -62,7 +62,7 @@ Accuracy is the whole measure. Everything else this spec promises follows from i
 
 | ID | Story | MUST | MUST NOT |
 |---|---|---|---|
-| R1 | As routing, I want the CSP's current Quality verdict so that I stop sending new customers to a CSP Quality has judged non-compliant, and start again when he recovers. | **(a)** Accept four verdicts as the CSP's judged standing: compliant, at risk, non-compliant, recovering. **(b)** Record the verdict against the CSP's exposure records as soon as it arrives. **(c)** Leave the recorded verdict to feed the exposure band by the existing rules, unchanged (G4). | Treat "could not judge him" as a verdict. A signal that Quality had insufficient data leaves the recorded verdict and the band exactly as they were — a CSP cannot be released from a block by going quiet. |
+| R1 | As routing, I want each CSP's current standing from Quality — improving or slipping — so that who I offer new work to reflects how Quality rates him today, not how it rated him last month. | **(a)** Accept four verdicts as the CSP's judged standing: compliant, at risk, non-compliant, recovering. **(b)** Record the verdict against the CSP's exposure records as soon as it arrives. **(c)** Leave the recorded verdict to feed the exposure band by the existing rules, unchanged (G4). | Treat "could not judge him" as a verdict. A signal that Quality had insufficient data leaves the recorded verdict and the band exactly as they were — a CSP cannot be released from a block by going quiet. |
 | R2 | As the Quality domain, when I name no zone I mean the CSP everywhere; when I name a zone I mean that zone only. | **(a)** A verdict that names no zone targets every exposure record the CSP holds. **(b)** A verdict that names a zone targets that one record. **(c)** Read an absent zone, an empty zone, and the placeholder `DEFAULT` as "no zone named". | **(a)** Bring an exposure record into existence (G1). **(b)** Apply a zone-named verdict to any other zone of that CSP, or widen it to all zones because the named zone is unrecognised (G2). |
 | R3 | As routing, I want the CSP's latest judged standing, not the last message that happened to arrive. | Keep the verdict Quality assessed most recently, comparing Quality's assessment time — never arrival time. | Let a re-delivered or delayed verdict replace a verdict assessed later than it, or at the same instant as it (G3). |
 | R4 | As the PM, I want to know a verdict was acted on, because this pipe has been silently dead once already. | Record, for every verdict received, whether it was applied or dropped and the reason for the drop. | Discard a verdict without a recorded reason. |
@@ -163,6 +163,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 |---|---|---|---|
 | AC-WF-1 | **Given** `a0a0m0` is compliant across his three zones and holds one accepted allocation in `zone_1101`, **When** Quality issues non-compliant at 02:00 on 12 Aug and a new connection is requested in each of his three zones at 03:00, **Then** all three records read non-compliant, none of the three new connections is assigned to him, and his accepted `zone_1101` allocation is still his and unchanged. | R1b · R2a · T1 · §1 Boundary | Settled |
 | AC-WF-2 | **Given** the state at the end of AC-WF-1, **When** Quality issues a recovering verdict for `a0a0m0` at 02:00 on 26 Aug, **Then** all three records read recovering and he is once more a candidate for new connections in all three zones. | R1a · R2a · T1 | Settled |
+| AC-WF-3 | **Given** `a0a0m0` and `a0b1u5` are both compliant and both hold a record in `zone_3092`, **When** Quality issues an at-risk verdict for `a0a0m0` at 02:00 on 12 Aug and a new connection is requested in `zone_3092` at 03:00, **Then** `a0a0m0`'s three records all read at risk, the connection goes to `a0b1u5`, and `a0a0m0` is still a candidate — out-ranked by the better-standing CSP, not blocked. | R1a · R2a · T1 · M1 | Settled |
 
 ### REG — Regression (§1 Boundary)
 
