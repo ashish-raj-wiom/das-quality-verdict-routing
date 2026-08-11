@@ -2,8 +2,8 @@
 
 | | | | |
 |---|---|---|---|
-| **Owner** — Ashish Raj (PM) | **Reviewer** — Saurabh Goyal (EM) | **Status** — In review | **Sign-off** — Pending |
-| **Version** — v0.4 · 11 Aug 2026 | **Consulted — Quality OS** — Akhil | **Consulted — Allocation eng** — TBD ⚠️ *AI GENERATED — review* | **Consulted — Capacity & Coverage** — TBD ⚠️ *AI GENERATED — review* |
+| **Owner** — Ashish Raj (PM) | **Reviewer** — Saurabh Goyal (EM) | **Status** — Signed off | **Sign-off** — Signed off · 11 Aug 2026 |
+| **Version** — v1.0 · 11 Aug 2026 | **Consulted — Quality OS** — Akhil | | |
 
 ---
 
@@ -26,7 +26,9 @@ Hard limits: a verdict never creates a routing exposure record (G1), and never r
 
 ### Dependency — four defects downstream that only this spec makes visible
 
-G4 promises the downstream algorithm keeps working. It works today because no verdict has ever reached it. Turning the signal on exposes four pre-existing faults in the band calculation and the routing rank. None is caused by this spec and none is in its scope to fix, but each one changes what a CSP actually experiences the day the signal goes live, so the reviewer needs them named. ⚠️ *AI GENERATED — review*
+G4 promises the downstream algorithm keeps working. It works today only because no verdict has ever reached it. Turning the signal on exposes four pre-existing faults in the band calculation and the routing rank.
+
+**None of these is to be fixed under this spec.** However the system behaves today, it must behave the same way after this ships — that is what G4 means and what AC-GRD-4 tests. They are listed only because each one changes what a CSP actually experiences the day the signal goes live, and the reviewer should not meet them by surprise. Each needs its own change, owned by the allocation domain.
 
 | # | What happens | Why it is wrong |
 |---|---|---|
@@ -48,7 +50,7 @@ G4 promises the downstream algorithm keeps working. It works today because no ve
 
 | ID | Metric | Baseline | Target | Source |
 |---|---|---|---|---|
-| M1 | **Verdict accuracy.** Share of a CSP's exposure records whose recorded verdict is the same as Quality's current verdict for him. No difference between the two systems, on any record, for any CSP. Records created since that verdict landed are excluded — they legitimately hold none until the next one (AC-REG-4) | Not measured. Routing has never received a verdict, so what it holds is frozen from the 18 Jul 2026 seed and agrees with Quality only by coincidence ⚠️ *AI GENERATED — review* | 100% | MQ-1 |
+| M1 | **Verdict accuracy.** Share of a CSP's exposure records whose recorded verdict is the same as Quality's current verdict for him. No difference between the two systems, on any record, for any CSP. Records created since that verdict landed are excluded — they legitimately hold none until the next one (AC-REG-4) | n/a — new capability. Routing has never received a verdict; what it holds is frozen from the 18 Jul 2026 seed and agrees with Quality only by coincidence | 100% | MQ-1 |
 
 Accuracy is the whole measure. Everything else this spec promises follows from it: if the verdict in routing is Quality's verdict, and the algorithm below it is untouched (G4), then the routing outcome is right by construction. Accuracy is measured on the **verdict**, not on the band — the band faults in D1–D4 are real but they are not this spec's to move, and folding them in would hide whether the signal itself arrived.
 
@@ -82,7 +84,7 @@ flowchart TD
 
 Which records a verdict targets is R2's answer, not a step in its own right: no zone named means all the CSP's records, a zone named means that one.
 
-**Precedence — simultaneous verdicts.** Two verdicts for the same CSP arriving together are resolved by Quality's assessment time: the later one is applied and the other is dropped, whichever is read first (AC-RACE-1). Two verdicts carrying the *same* assessment time cannot be ranked by standing — the first applied wins and the second is dropped, because it is not later (AC-RACE-2). ⚠️ *AI GENERATED — review*
+**Precedence — simultaneous verdicts.** Two verdicts for the same CSP arriving together are resolved by Quality's assessment time: the later one is applied and the other is dropped, whichever is read first (AC-RACE-1). Quality issues one verdict per CSP per cycle, so two *different* verdicts sharing an assessment time do not arise; a verdict matching the recorded assessment time is a re-delivery, and T2 drops it.
 
 ### 3b. State transition table — canon
 
@@ -117,7 +119,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 
 ## 6. Acceptance Criteria
 
-> Worked examples use CSP `a0a0m0` (three zones: `zone_1101`, `zone_3092`, `india_grid_002192694`), CSP `a0b1u5` (one zone: `zone_3092`) and CSP `a0a7h4` (authorised nowhere in routing). Cycle close is 12 Aug 2026, 02:00 IST. ⚠️ *AI GENERATED — review* — the CSP ids and zone ids are real, the pairings are illustrative.
+> Worked examples use CSP `a0a0m0` (three zones: `zone_1101`, `zone_3092`, `india_grid_002192694`), CSP `a0b1u5` (one zone: `zone_3092`) and CSP `a0a7h4` (authorised nowhere in routing). Cycle close is 12 Aug 2026, 02:00 IST. The CSP ids and zone ids are real; which CSP sits in which zone is illustrative, so QA should substitute a genuine multi-zone CSP and the real cycle cadence before these become tests.
 
 ### APP — Applying a verdict (T1)
 
@@ -147,13 +149,12 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
 | AC-RACE-1 | **Given** `a0a0m0`'s three records read at risk from a verdict assessed 10 Aug 02:00, **When** two verdicts arrive together at 12 Aug 09:00 — compliant assessed 12 Aug 02:00 and non-compliant assessed 11 Aug 02:00 — **Then** all three records read compliant whichever of the two is read first, and the non-compliant verdict is dropped as not newer. | R3 · T1 · T2 · G3 | Settled |
-| AC-RACE-2 | **Given** `a0a0m0`'s three records read at risk from a verdict assessed 10 Aug 02:00, **When** two conflicting verdicts arrive together, both assessed 12 Aug 02:00:00 — one compliant, one non-compliant — **Then** exactly one is applied to all three records and the other is dropped as not newer; the three records never disagree with each other. | R3 · T1 · T2 · G3 | Settled |
 
 ### BV — Boundary values (assessment time)
 
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
-| AC-BV-1 | **Given** `a0a0m0`'s records hold a compliant verdict assessed 12 Aug 02:00:00, **When** a lone non-compliant verdict assessed at exactly 12 Aug 02:00:00 arrives, **Then** the records still read compliant and the arriving verdict is dropped — equal is not later. | R3 · T2 · G3 | Settled |
+| AC-BV-1 | **Given** `a0a0m0`'s records hold a compliant verdict assessed 12 Aug 02:00:00, **When** a verdict assessed at exactly 12 Aug 02:00:00 arrives, **Then** it is dropped as not newer and the records are unchanged — equal is not later. | R3 · T2 · G3 | Settled |
 | AC-BV-2 | **Given** the same records, **When** a non-compliant verdict assessed 12 Aug 02:00:01 arrives, **Then** all three records read non-compliant. | R3 · T1 | Settled |
 
 ### WF — Workflows
@@ -215,18 +216,6 @@ What the platform must be able to do for this feature to exist. Whether these ar
 
 ---
 
-## AI-generated content for review
-
-| Location | What was generated | Basis |
-|---|---|---|
-| Header — Consulted (Allocation eng, Capacity & Coverage) | Both names left as TBD | Reviewer and Quality OS are now confirmed (Saurabh Goyal, Akhil). These two are not. Deliberately not filled from memory — a wrong name has shipped in a deliverable before. Sign-off is blocked until they are real. |
-| §1 Dependency D1–D4 | The whole table: the missing recovery case and unread recovery-window parameter, the lowest-tier ranking of a recovering-but-compliant CSP, the off-by-one on the compliant-cycle counter, and the combined-band read that lets enforcement consume quality's earned position | Not asked; found by tracing the band derivation and the routing rank against D&A OS §4.2 and §4.3. Confirm you want these stated as flagged dependencies rather than pulled into this spec's scope. |
-| §1 M1 baseline | "Not measured … agrees with Quality only by coincidence" | The target (100%) is yours. The baseline is not: nobody has ever compared the two systems. Today's real number is knowable — routing's verdicts and Quality's verdicts both sit in the production read replica — so this can be replaced with a measured figure rather than a description. Say the word and it gets measured. |
-| §3a Precedence — same assessment time | The rule that equal assessment times resolve first-wins, second dropped, and the two ACs that test it (AC-RACE-2, AC-BV-1) | Not asked. "Newest wins" leaves the equal case undefined; two verdicts with the same assessment time cannot be ranked by standing, so the tie is broken deterministically rather than by arrival luck. Confirm, or say Quality can never produce a tie. |
-| §6 preamble and worked data throughout | `a0a0m0` in three named zones, `a0b1u5` in one, `a0a7h4` in none; the 12 Aug cycle close, the 13 Aug authorisation in AC-REG-4 and the 26 Aug dates in AC-WF-2 and AC-REG-5 | The CSP ids and zone ids are real (from the Quality QA fixtures and the July routing audit), but which CSP sits in which zone is illustrative, and the dates assume a fortnightly decider cadence. Swap in a genuine multi-zone CSP and the real cadence before these become tests. |
-
----
-
 ## Overrides
 
 | Rule | What was done instead | Rationale | Approved by |
@@ -236,3 +225,6 @@ What the platform must be able to do for this feature to exist. Whether these ar
 | §7 — a Configurability AC where a runtime change is customer-visible | No CFG AC | There are no C-ids. | Ashish Raj (PM) — follows from removing §5 |
 | §4 Screen Requirements — one block per screen | Section states "none" with the reason | Routing has no interface, and the CSP's quality strip is served from the Quality domain, so no screen changes. Stating this is the regression contract (AC-REG-3); inventing a screen block would not be. | Ashish Raj (PM) — scope instruction: "listens to the quality verdict, updates the CSP state, nothing else" |
 | §1 — a guardrail for forward-effectiveness | Stated in the Boundary and tested by AC-REG-2, not given a G-id | It is a statement of what this spec leaves alone, not a promise the spec makes on every path. D&A OS §4.2 already owns it. Promoting it to a guardrail would have required a measurement question for a property nothing in this spec can violate. | Ashish Raj (PM) |
+| Header — name a consulted party per adjacent domain | Only Quality OS is named. The Allocation eng and Capacity & Coverage seats are removed, not filled | Nobody from either domain was consulted. A name against a domain that never saw the spec reads as sign-off that did not happen; the reviewer carries the allocation side. Capacity & Coverage has no involvement — no zone definition, eligibility rule or cap changes here. | Ashish Raj (PM) |
+| §3a — a precedence rule for every simultaneity | No rule for two *different* verdicts sharing an assessment time | Quality issues one verdict per CSP per cycle, so the case cannot arise. A verdict matching the recorded assessment time is a re-delivery, which T2 already drops. R3, G3 and T2 keep their "or at the same instant" clause — it is what makes a re-delivery a no-op. | Ashish Raj (PM) — "Cut it — Quality cannot tie" |
+| §1 Dependency — D1–D4 stated but not fixed | Four known faults in the downstream band calculation and routing rank are named and deliberately left in place | This spec receives the signal and records it; it does not touch the algorithm below. Whatever the system does today it must keep doing (G4, AC-GRD-4). Each fault needs its own change owned by the allocation domain. A third rank inversion found during review (a CSP re-failing during recovery is promoted) is held for that follow-up rather than added here. | Ashish Raj (PM) — "however the system works today, it should work" |

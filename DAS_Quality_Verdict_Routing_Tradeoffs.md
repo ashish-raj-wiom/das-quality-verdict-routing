@@ -1,0 +1,33 @@
+# Quality Verdict in Routing — Tradeoffs Register
+
+Companion to `DAS_Quality_Verdict_Routing_PRD.md` v1.0. **Not part of the PRD.** This is the record of every decision taken while writing it: what was chosen, what was turned down, and the reason given at the time — so that "why is it like this?" has an answer without archaeology.
+
+| # | Decision point | Chosen | Rejected | Why | Date |
+|---|---|---|---|---|---|
+| 1 | Zone scope, given Quality is CSP-scoped and cannot emit a real zone today | Define both behaviours now: no zone named → all his zones; a real zone named → that pair only | Require Quality OS to start emitting zone-scoped verdicts; CSP-wide only, ignore the zone field | Ships with no cross-OS dependency on Quality, and stays forward-compatible if Quality ever goes zone-scoped | 10 Aug 2026 |
+| 2 | What happens to work already in a blocked CSP's hands | Block new allocations only | Also pull back assigned-not-yet-accepted; pull back everything not yet installed | Matches D&A OS §4.2 literally and needs no new invariant. Pulling back would need a race rule and a reroute fallback | 10 Aug 2026 |
+| 3 | The "could not judge him" signal | DAS never subscribes to it | Map it to the baseline band, as today's code does; subscribe but never let it lift a block | Closes the hole where a blocked CSP frees himself by going quiet. Also lands closer to D&A OS §4.3, which says prior state carries forward | 10 Aug 2026 |
+| 4 | A blocked CSP authorised in a new zone | The new record starts clean, carrying no verdict | New records inherit the CSP's current verdict | Accepts a window of up to one cycle where a blocked CSP is routable in new territory. Conscious call, recorded in the Boundary | 10 Aug 2026 |
+| 5 | The recovering verdict | Treat it as a verdict like any other | Act only on compliant | Asked for the code reality first. Quality's state machine has no direct non-compliant → compliant edge, so without recovering the block would never release | 10 Aug 2026 |
+| 6 | The literal `DEFAULT` value Quality sends in the zone field | Read it as "no zone named" → all his zones | Reject it as an unrecognised zone; ignore the zone field entirely | Works against today's producer with no change on Quality's side, and keeps the zone-scoped contract from decision 1 | 10 Aug 2026 |
+| 7 | When a verdict takes effect | On receipt, forward-effective | At the next allocation cycle | D&A OS §4.2 allows an event trigger, and E1 makes changes forward-effective. Waiting for a boundary would keep feeding a non-compliant CSP | 10 Aug 2026 |
+| 8 | A verdict naming a zone routing does not hold | Drop it and record the reason | Create the exposure record, as today's code does; fall back to all his zones | Never widen, never create. Mirrors the scope-fidelity logic of INV-DAO-17 | 10 Aug 2026 |
+| 9 | Two verdicts arriving out of order | The one Quality assessed later wins, compared on assessment time | Last to arrive wins | Stops a re-delivery from re-blocking a CSP who has already recovered | 10 Aug 2026 |
+| 10 | What to measure (first pass) | Signal arriving · changing routing · landing on every zone | A zone-starvation metric | Superseded by decision 14 | 10 Aug 2026 |
+| 11 | Configurability section | Delete it. No C-ids at all | Keep the latency bound, the verdict list and the placeholder as C-01/C-02/C-03 | "Remove the Configurability section. No need." Nothing here is a product-tunable quantity | 11 Aug 2026 |
+| 12 | Protecting the existing routing behaviour | Promote it to guardrail G4, with its own AC and measurement question | Leave it as a Boundary statement | "Any downstream like routing, exposure band calculation etc should work as expected." A promise made on every path deserves a G-id | 11 Aug 2026 |
+| 13 | The dispatch flow chart | Collapse to two decisions and three transitions | The original six decisions and six transitions | "Why do we need so many steps?" Three branches were modelling an impossible event, one outcome under two labels, and a rule that belongs in R2 | 11 Aug 2026 |
+| 14 | How many metrics | One: verdict accuracy, Quality versus DAS, target 100% | Three: allocations to a non-compliant CSP, verdict delivery, multi-zone fan-out | "Whatever the verdict is in Quality OS for the CSP, it should reflect in DAS routing as well. No difference in the two." Everything else follows from accuracy plus G4 | 11 Aug 2026 |
+| 15 | The accuracy baseline | n/a — new capability | Measure today's real figure from the production read replica; keep the descriptive sentence | Accepted shipping without a measured starting point | 11 Aug 2026 |
+| 16 | Two different verdicts sharing an assessment time | No rule. The case cannot arise | A first-wins tiebreak with its own AC | Quality issues one verdict per CSP per cycle. The "or at the same instant" clause stays in R3, G3 and T2 — it is what makes a re-delivery a no-op | 11 Aug 2026 |
+| 17 | The unfilled consulted seats | Remove them. Only Quality OS is named | Ashish covers both; the reviewer covers the allocation seat | Nobody from either domain was consulted, and a name against a domain that never saw the spec reads as sign-off that did not happen | 11 Aug 2026 |
+| 18 | The four downstream faults found during review | Name them as dependencies, fix none of them | Pull the recovery-band fix into this spec's scope | "However the system works today, it should work." This spec receives the signal and records it; the algorithm below is the allocation domain's | 11 Aug 2026 |
+| 19 | A third rank inversion found late — a CSP re-failing during recovery is promoted | Leave it out of v1.0 | Add it as a fifth dependency row | Finalise the spec first, examine the anomalies after. It goes into the follow-up defect note with the merge-discipline and missing-intensity findings | 11 Aug 2026 |
+
+## Carried forward — not part of this spec
+
+Three findings surfaced during review that belong to the allocation domain, not here. They are recorded so they are not lost:
+
+1. **Merge discipline.** Only the quality writer performs the full four-way most-restrictive merge that OS rule B-DA-2 requires. The enforcement writer merges two of four; the exit and capacity writers do not merge at all and hard-set a band, which can lower severity and never recomputes on the way back up. This is the mechanism behind the band-stuck rows seen in July.
+2. **Missing intensity.** The reduced, baseline and capped bands are supposed to scale a CSP's share of allocation. The parameters that would do it are configured and read nowhere, and routing simply takes the top-ranked CSP. Bands are a gate plus a sort key; the intensity half of D&A OS §4.2 was never built.
+3. **The third rank inversion** from decision 19.
