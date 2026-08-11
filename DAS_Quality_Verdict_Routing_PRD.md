@@ -3,7 +3,7 @@
 | | | | |
 |---|---|---|---|
 | **Owner** — Ashish Raj (PM) | **Reviewer** — Saurabh Goyal (EM) | **Status** — In review | **Sign-off** — Pending |
-| **Version** — v0.3 · 11 Aug 2026 | **Consulted — Quality OS** — Akhil | **Consulted — Allocation eng** — TBD ⚠️ *AI GENERATED — review* | **Consulted — Capacity & Coverage** — TBD ⚠️ *AI GENERATED — review* |
+| **Version** — v0.4 · 11 Aug 2026 | **Consulted — Quality OS** — Akhil | **Consulted — Allocation eng** — TBD ⚠️ *AI GENERATED — review* | **Consulted — Capacity & Coverage** — TBD ⚠️ *AI GENERATED — review* |
 
 ---
 
@@ -39,20 +39,20 @@ G4 promises the downstream algorithm keeps working. It works today because no ve
 
 | ID | Guardrail | One line | Anchors |
 |---|---|---|---|
-| G1 | **No phantom exposure** | A verdict never brings a (CSP, zone) exposure record into existence — it only updates records that already exist. | R2 · AC-GRD-1 · AC-DRP-1 · AC-DRP-2 · MQ-4 |
-| G2 | **No scope widening** | A verdict that names a zone changes that zone and no other. | R2b · AC-GRD-2 · AC-APP-2 · MQ-3 |
-| G3 | **No stale overwrite** | A verdict never replaces one assessed later than it, or at the same instant as it, however late it arrives. | R3 · AC-GRD-3 · AC-DRP-3 · MQ-1 |
-| G4 | **Downstream untouched** | Everything downstream of the recorded verdict — the exposure band calculation, the routing pipeline, its gates and its ranking — behaves exactly as it does today. This spec changes the input, never the algorithm. | R1c · AC-GRD-4 · AC-REG-1 · AC-REG-2 · MQ-5 |
+| G1 | **No phantom exposure** | A verdict never brings a (CSP, zone) exposure record into existence — it only updates records that already exist. | R2 · AC-GRD-1 · AC-DRP-1 · AC-DRP-2 · MQ-3 |
+| G2 | **No scope widening** | A verdict that names a zone changes that zone and no other. | R2b · AC-GRD-2 · AC-APP-2 · MQ-1 |
+| G3 | **No stale overwrite** | A verdict never replaces one assessed later than it, or at the same instant as it, however late it arrives. | R3 · AC-GRD-3 · AC-DRP-3 · MQ-2 |
+| G4 | **Downstream untouched** | Everything downstream of the recorded verdict — the exposure band calculation, the routing pipeline, its gates and its ranking — behaves exactly as it does today. This spec changes the input, never the algorithm. | R1c · AC-GRD-4 · AC-REG-1 · AC-REG-2 · MQ-4 |
 
 ### Success metrics
 
 | ID | Metric | Baseline | Target | Source |
 |---|---|---|---|---|
-| M1 | Share of new allocations assigned to a CSP whose current recorded verdict is non-compliant | Unbounded — routing has never held a live verdict, so no CSP has ever been withheld work on quality grounds | 0% ⚠️ *AI GENERATED — review* | MQ-2 |
-| M2 | Share of verdicts Quality issues that routing either applies or drops with a recorded reason | 0% — no verdict has ever reached routing | 100% ⚠️ *AI GENERATED — review* | MQ-1 |
-| M3 | Share of multi-zone CSPs whose every exposure record carries the CSP's current verdict at cycle close. Records created since that verdict landed are excluded — they legitimately hold none until the next one (AC-REG-4) | n/a — new capability | 100% ⚠️ *AI GENERATED — review* | MQ-3 |
+| M1 | **Verdict accuracy.** Share of a CSP's exposure records whose recorded verdict is the same as Quality's current verdict for him. No difference between the two systems, on any record, for any CSP. Records created since that verdict landed are excluded — they legitimately hold none until the next one (AC-REG-4) | Not measured. Routing has never received a verdict, so what it holds is frozen from the 18 Jul 2026 seed and agrees with Quality only by coincidence ⚠️ *AI GENERATED — review* | 100% | MQ-1 |
 
-**Invariant (not a metric):** G1 — exposure records created by a verdict = 0, zero tolerance. Monitored via MQ-4, not trended.
+Accuracy is the whole measure. Everything else this spec promises follows from it: if the verdict in routing is Quality's verdict, and the algorithm below it is untouched (G4), then the routing outcome is right by construction. Accuracy is measured on the **verdict**, not on the band — the band faults in D1–D4 are real but they are not this spec's to move, and folding them in would hide whether the signal itself arrived.
+
+**Invariant (not a metric):** G1 — exposure records created by a verdict = 0, zero tolerance. Monitored via MQ-3, not trended.
 
 ---
 
@@ -108,11 +108,10 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 
 | ID | The system must be able to answer… | Feeds |
 |---|---|---|
-| MQ-1 | For each evaluation cycle: how many verdicts Quality issued, how many routing applied, and how many it dropped — broken down by drop reason. | M2 · R4 · G3 |
-| MQ-2 | For each new allocation, what the assigned CSP's recorded verdict was at the moment of assignment. | M1 · R1 |
-| MQ-3 | For each multi-zone CSP at cycle close, whether every one of his exposure records carries his current verdict — counting only records that already existed when that verdict landed. | M3 · G2 · R2a |
-| MQ-4 | Whether any exposure record came into existence as a result of a verdict. | G1 invariant |
-| MQ-5 | For a given set of CSP inputs, whether the exposure band and the routing outcome are the same as they would have been before this spec shipped. | G4 |
+| MQ-1 | For every CSP, and for every exposure record he holds, whether the recorded verdict is the same as Quality's current verdict for him — counting only records that already existed when that verdict landed. | M1 · R1 · R2a · G2 |
+| MQ-2 | For each evaluation cycle: how many verdicts Quality issued, how many routing applied, and how many it dropped — broken down by drop reason. This is the diagnostic behind any accuracy gap MQ-1 shows. | R4 · G3 |
+| MQ-3 | Whether any exposure record came into existence as a result of a verdict. | G1 invariant |
+| MQ-4 | For a given set of CSP inputs, whether the exposure band and the routing outcome are the same as they would have been before this spec shipped. | G4 |
 
 ---
 
@@ -161,7 +160,7 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
-| AC-WF-1 | **Given** `a0a0m0` is compliant across his three zones and holds one accepted allocation in `zone_1101`, **When** Quality issues non-compliant at 02:00 on 12 Aug and a new connection is requested in each of his three zones at 03:00, **Then** all three records read non-compliant, none of the three new connections is assigned to him, and his accepted `zone_1101` allocation is still his and unchanged. | R1b · R2a · T1 · M1 · §1 Boundary | Settled |
+| AC-WF-1 | **Given** `a0a0m0` is compliant across his three zones and holds one accepted allocation in `zone_1101`, **When** Quality issues non-compliant at 02:00 on 12 Aug and a new connection is requested in each of his three zones at 03:00, **Then** all three records read non-compliant, none of the three new connections is assigned to him, and his accepted `zone_1101` allocation is still his and unchanged. | R1b · R2a · T1 · §1 Boundary | Settled |
 | AC-WF-2 | **Given** the state at the end of AC-WF-1, **When** Quality issues a recovering verdict for `a0a0m0` at 02:00 on 26 Aug, **Then** all three records read recovering and he is once more a candidate for new connections in all three zones. | R1a · R2a · T1 | Settled |
 
 ### REG — Regression (§1 Boundary)
@@ -179,10 +178,10 @@ Lifecycle of the **recorded verdict** on a CSP's exposure record (created when t
 
 | AC | Given / When / Then | Verifies | Status |
 |---|---|---|---|
-| AC-GRD-1 | **Given** `a0a0m0` holds exactly three exposure records, **When** a verdict is sent down each path of §3a in turn — applied, dropped as not newer, dropped as not held — **Then** he still holds exactly three records after every one of them, and no record exists for any zone he was not already authorised in. | G1 · MQ-4 | Settled |
-| AC-GRD-2 | **Given** `a0a0m0` holds records in `zone_1101`, `zone_3092` and `india_grid_002192694`, **When** a verdict naming `zone_3092` is applied, **Then** the other two records are unchanged in every respect, and no record belonging to any other CSP changes. | G2 · MQ-3 | Settled |
-| AC-GRD-3 | **Given** `a0a0m0`'s `zone_1101` record holds a compliant verdict assessed 29 Jul 02:00, **When** three verdicts — non-compliant assessed 11 Aug 02:00, compliant assessed 12 Aug 02:00:00, non-compliant assessed 12 Aug 02:00:01 — are delivered in any of the six possible orders, **Then** the record ends non-compliant every time and the assessment time on it never moves backwards at any step. | G3 · MQ-1 | Settled |
-| AC-GRD-4 | **Given** an exposure record whose verdict, enforcement posture, exit state, zone eligibility and connection count are all fixed at known values, **When** the band and the routing outcome are computed, **Then** both are identical to what the same inputs produced before this spec shipped — for every combination of the four verdicts with every other input. The four faults in D1–D4 are pre-existing and must reproduce unchanged; this AC catches a *new* difference, not an old one. | G4 · MQ-5 | Settled |
+| AC-GRD-1 | **Given** `a0a0m0` holds exactly three exposure records, **When** a verdict is sent down each path of §3a in turn — applied, dropped as not newer, dropped as not held — **Then** he still holds exactly three records after every one of them, and no record exists for any zone he was not already authorised in. | G1 · MQ-3 | Settled |
+| AC-GRD-2 | **Given** `a0a0m0` holds records in `zone_1101`, `zone_3092` and `india_grid_002192694`, **When** a verdict naming `zone_3092` is applied, **Then** the other two records are unchanged in every respect, and no record belonging to any other CSP changes. | G2 · MQ-1 | Settled |
+| AC-GRD-3 | **Given** `a0a0m0`'s `zone_1101` record holds a compliant verdict assessed 29 Jul 02:00, **When** three verdicts — non-compliant assessed 11 Aug 02:00, compliant assessed 12 Aug 02:00:00, non-compliant assessed 12 Aug 02:00:01 — are delivered in any of the six possible orders, **Then** the record ends non-compliant every time and the assessment time on it never moves backwards at any step. | G3 · MQ-2 | Settled |
+| AC-GRD-4 | **Given** an exposure record whose verdict, enforcement posture, exit state, zone eligibility and connection count are all fixed at known values, **When** the band and the routing outcome are computed, **Then** both are identical to what the same inputs produced before this spec shipped — for every combination of the four verdicts with every other input. The four faults in D1–D4 are pre-existing and must reproduce unchanged; this AC catches a *new* difference, not an old one. | G4 · MQ-4 | Settled |
 
 ---
 
@@ -209,10 +208,10 @@ What the platform must be able to do for this feature to exist. Whether these ar
 | Receive a CSP's Quality verdict from the quality domain and hold it against that CSP's routing exposure records. | R1 · T1 |
 | Distinguish a verdict scoped to one zone from one scoped to the whole CSP — including reading the `DEFAULT` placeholder as "no zone named" — and honour the narrower scope without ever widening it. | R2 · G2 · T1 · T3 |
 | Order verdicts by the time the quality domain assessed them rather than the time they arrive, and reject anything not strictly later than what is held. | R3 · G3 · T2 |
-| Update every exposure record a CSP holds from a single CSP-scoped verdict, without bringing any record into existence. | R2a · G1 · T1 · MQ-3 · MQ-4 |
-| Record, for every verdict received, whether it was applied or dropped and why. | R4 · MQ-1 |
-| Answer, for any new allocation, what the assigned CSP's recorded verdict was at the moment of assignment. | MQ-2 · M1 |
-| Reproduce, for a fixed set of inputs, the band and routing outcome the platform produced before this spec — so a change in behaviour can be told apart from a change in signal. | G4 · MQ-5 |
+| Update every exposure record a CSP holds from a single CSP-scoped verdict, without bringing any record into existence. | R2a · G1 · T1 · MQ-3 |
+| Record, for every verdict received, whether it was applied or dropped and why. | R4 · MQ-2 |
+| Compare, for any CSP, the verdict routing holds against the verdict the quality domain currently holds, record by record. | M1 · MQ-1 |
+| Reproduce, for a fixed set of inputs, the band and routing outcome the platform produced before this spec — so a change in behaviour can be told apart from a change in signal. | G4 · MQ-4 |
 
 ---
 
@@ -222,9 +221,7 @@ What the platform must be able to do for this feature to exist. Whether these ar
 |---|---|---|
 | Header — Consulted (Allocation eng, Capacity & Coverage) | Both names left as TBD | Reviewer and Quality OS are now confirmed (Saurabh Goyal, Akhil). These two are not. Deliberately not filled from memory — a wrong name has shipped in a deliverable before. Sign-off is blocked until they are real. |
 | §1 Dependency D1–D4 | The whole table: the missing recovery case and unread recovery-window parameter, the lowest-tier ranking of a recovering-but-compliant CSP, the off-by-one on the compliant-cycle counter, and the combined-band read that lets enforcement consume quality's earned position | Not asked; found by tracing the band derivation and the routing rank against D&A OS §4.2 and §4.3. Confirm you want these stated as flagged dependencies rather than pulled into this spec's scope. |
-| §1 M1 target — 0% | Target value | Inferred from the objective. You said the point is that a non-compliant CSP stops getting new work; 0% is the literal reading. Confirm you want zero rather than a tolerance. |
-| §1 M2 target — 100% | Target value | Inferred from R4 ("no silent loss"). Every verdict is either applied or has a reason, so 100% is definitional rather than ambitious. |
-| §1 M3 target — 100% | Target value | Inferred from R2a. If fan-out works, every record carries the verdict; anything under 100% is a defect, not a shortfall. |
+| §1 M1 baseline | "Not measured … agrees with Quality only by coincidence" | The target (100%) is yours. The baseline is not: nobody has ever compared the two systems. Today's real number is knowable — routing's verdicts and Quality's verdicts both sit in the production read replica — so this can be replaced with a measured figure rather than a description. Say the word and it gets measured. |
 | §3a Precedence — same assessment time | The rule that equal assessment times resolve first-wins, second dropped, and the two ACs that test it (AC-RACE-2, AC-BV-1) | Not asked. "Newest wins" leaves the equal case undefined; two verdicts with the same assessment time cannot be ranked by standing, so the tie is broken deterministically rather than by arrival luck. Confirm, or say Quality can never produce a tie. |
 | §6 preamble and worked data throughout | `a0a0m0` in three named zones, `a0b1u5` in one, `a0a7h4` in none; the 12 Aug cycle close, the 13 Aug authorisation in AC-REG-4 and the 26 Aug dates in AC-WF-2 and AC-REG-5 | The CSP ids and zone ids are real (from the Quality QA fixtures and the July routing audit), but which CSP sits in which zone is illustrative, and the dates assume a fortnightly decider cadence. Swap in a genuine multi-zone CSP and the real cadence before these become tests. |
 
